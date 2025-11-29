@@ -1,0 +1,5 @@
+REQUEST_DIRECTORY = "requests"
+RESPONSE_DIRECTORY = "responses"
+RECEIPT_DIRECTORY = "reciepts"
+LOG_DIRECTORY = "logs"
+LOG_FILE = ""
