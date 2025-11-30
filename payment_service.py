@@ -112,7 +112,8 @@ def process_payment(request, response_file):
     '''
     main controller for handling payments, using validate_payment, generate_payment_id, and mask_card to approve or deny transactions.
     '''
-    is_valid, error = validate_payment(request)
+    is_valid = validate_payment(request)
+    error = None
 
     if not is_valid:
         with open(response_file, "w") as f:
@@ -143,8 +144,68 @@ def process_payment(request, response_file):
 
     log(f"PAYMENT APPROVED: {payment_id}, amount={request['AMOUNT']}")
 
+def process_reciept_request(request, response_file):
+    if "Payment_ID" not in request:
+        with open(response_file, "w") as f:
+            f.write("STATUS=ERROR\n")
+            f.write("REASON=Missing PAYMENT_ID\n")
+        log("RECEIPT ERROR: Missing PAYMENT_ID")
+        return
+
+    pay_id = request["PAYMENT_ID"]
+    receipt_path = os.path.join(RECEIPT_DIRECTORY, f"receipt_{pay_id}.json")
+
+    if not os.path.exists(receipt_path):
+        with open(response_file, "w") as f:
+            f.write("STATUS=ERROR\n")
+            f.write("REASON=Receipt not found\n")
+        log(f"RECEIPT ERROR: Receipt not found for {pay_id}")
+        return
+    
+    with open(receipt_path, "r") as f:
+        receipt = json.load(f)
+
+    with open(response_file, "w") as f:
+        f.write("STATUS=FOUND\n")
+        f.write(f"PAYMENT_ID={receipt['payment_id']}\n")
+        f.write(f"AMOUNT={receipt['amount']}\n")
+        f.write(f"CARD={receipt['masked_card']}\n")
+
+    log(f"RECEIPT FOUND: payment_id={pay_id}")     
+
 def run_service():
     '''
     Main Service Loop
     '''
     print("Payment Service is running... (press CTRL+C to stop)")
+    log("-----Payment Service Initiated -----")
+
+    while True:
+        files = os.listdir(REQUEST_DIRECTORY)
+
+        for filename in files:
+            path = os.path.join(REQUEST_DIRECTORY, filename)
+
+            # Safety Check: checks for file
+            if not os.path.isfile(path):
+                continue
+
+            request = parse_request(path)
+            unique_id = filename.split("_")[-1].replace(".txt", "")
+
+            # Determine type of request based on file name prefix
+            if filename.startswith("payment_request"):
+                response_file = os.path.join(RESPONSE_DIRECTORY, f"payment_response_{unique_id}.txt")
+                process_payment(request, response_file)
+
+            elif filename.startswith("receipt_request"):
+                response_file = os.path.join(RESPONSE_DIRECTORY, f"receipt_response_{unique_id}.txt")
+                process_reciept_request(request, response_file)
+
+            os.remove(path)
+
+        time.sleep(0.5)
+
+
+if __name__ == "__main__":
+    run_service()
