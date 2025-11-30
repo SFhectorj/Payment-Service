@@ -107,7 +107,41 @@ def validate_payment(request):
         return False
     
     return True
+
+def process_payment(request, response_file):
+    '''
+    main controller for handling payments, using validate_payment, generate_payment_id, and mask_card to approve or deny transactions.
+    '''
+    is_valid, error = validate_payment(request)
+
+    if not is_valid:
+        with open(response_file, "w") as f:
+            f.write("STATUS=DENIED\n")
+            f.write(f"REASON={error}\n")
+        log(f"PAYMENT DENIED: {error}")
+        return
     
+    # When validation is passed
+    payment_id = generate_payment_id()
+
+    with open(response_file, "w") as f:
+        f.write("STATUS=APPROVED\n")
+        f.write(f"PAYMENT_ID={payment_id}\n")
+
+    # Builds dict for receipt data
+    receipt_data = {
+        "payment_id": payment_id,
+        "amount": float(request["AMOUNT"]),
+        "masked_card": mask_card(request["CARD"]),
+        "timestamp":datetime.datetime.now().isoformat()
+    }
+
+    # Save Reciept
+    receipt_path = os.path.join(RECEIPT_DIRECTORY, f"receipt_{payment_id}.json")
+    with open(receipt_path, "w") as f:
+        json.dump(receipt_data, f, indent=2)
+
+    log(f"PAYMENT APPROVED: {payment_id}, amount={request['AMOUNT']}")
 
 def run_service():
     '''
