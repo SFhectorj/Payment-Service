@@ -1,5 +1,8 @@
 # Payment-Service
-
+The Payment Simulator Microservice talks to each other using text files in two folders:
+requests/ These are the files created by external program.
+responses/ These are the files the Payment Service creates.
+  
 Example Request/Response Call:
 # Request
 {
