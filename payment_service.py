@@ -63,7 +63,51 @@ def parse_request(path):
                 data[key] = value
     return data
 
-
+def validate_payment(request):
+    '''
+    Validates card information from request.
+    Goes through CARD, EXP, CVV, Amount.
+    Returns error messages if an issue is found.
+    '''
+    if "CARD" not in request or not request["CARD"].isdigit():
+        print("Invalid CARD format")
+        return False
+    if "EXP" not in request or "/" not in request["EXP"]:
+        print("Invalid EXP format")
+        return False
+    # attempts to convert expiration date, returning errors if conversion fails.
+    try:
+        month, year = request["EXP"].split("/")
+        month = int(month)
+        year = int("20" + year)
+        exp_date = datetime.date(year, month, 1)
+        if exp_date < datetime.date.today().replace(day=1):
+            print("Card Expired")
+            return False
+    except:
+        print("Invalid EXP format")
+        return False
+    
+    if "CVV" not in request or not request["CVV"].isdigit():
+        print("Invalid CVV format")
+        return False
+    
+    if "AMOUNT" not in request:
+        print("Missing AMOUNT")
+        return False
+    
+    # Converts amount into float
+    try:
+        amount_valid = float(request["AMOUNT"])
+        if amount_valid <= 0:
+            print("Invalid amount value")
+            return False
+    except:
+        print("Invalid amount value")
+        return False
+    
+    return True
+    
 
 def run_service():
     '''
